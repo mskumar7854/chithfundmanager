@@ -1,0 +1,17 @@
+{
+  "name": "ChitLedger - Chit Fund Manager",
+  "short_name": "ChitLedger",
+  "description": "Internal chit fund management tool with automated reverse auction calculation, dividend distribution, organizer fee deduction, member ledgers, and payment reminders.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8f9fc",
+  "theme_color": "#0b57d0",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

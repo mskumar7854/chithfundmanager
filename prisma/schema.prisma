@@ -1,0 +1,217 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// 1. Members & Groups
+// -----------------------------------------------------------------------------
+
+model Member {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  isActive  Boolean  @default(true)
+  
+  // Relationships
+  groupMemberships GroupMember[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ChitGroup {
+  id             String   @id @default(cuid())
+  name           String
+  totalAmount    Decimal  @db.Decimal(12, 2)
+  installmentAmt Decimal  @db.Decimal(12, 2)
+  totalMonths    Int
+  commissionPct  Decimal  @db.Decimal(5, 2)
+  startDate      DateTime
+  status         GroupStatus @default(ACTIVE)
+  
+  // Relationships
+  members        GroupMember[]
+  auctions       Auction[]
+  expenses       Expense[]
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+enum GroupStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model GroupMember {
+  id          String   @id @default(cuid())
+  memberId    String
+  groupId     String
+  isActive    Boolean  @default(true)
+  joinDate    DateTime @default(now())
+  
+  member      Member    @relation(fields: [memberId], references: [id])
+  group       ChitGroup @relation(fields: [groupId], references: [id])
+  
+  installments Installment[]
+  bids         Bid[]
+  payouts      Payout[]
+  
+  @@unique([memberId, groupId])
+  @@index([memberId])
+  @@index([groupId])
+}
+
+// -----------------------------------------------------------------------------
+// 2. Auctions & Bids
+// -----------------------------------------------------------------------------
+
+model Auction {
+  id              String   @id @default(cuid())
+  groupId         String
+  monthNumber     Int
+  auctionDate     DateTime
+  status          AuctionStatus @default(SCHEDULED)
+  
+  winningBidId    String?  @unique
+  winningBid      Bid?     @relation("AuctionWinner", fields: [winningBidId], references: [id])
+  
+  commissionAmount  Decimal? @db.Decimal(12, 2)
+  dividendPerMember Decimal? @db.Decimal(12, 2) 
+  netPayoutAmount   Decimal? @db.Decimal(12, 2)
+  
+  group           ChitGroup @relation(fields: [groupId], references: [id])
+  bids            Bid[]     @relation("AuctionBids")
+  payout          Payout?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([groupId, monthNumber])
+  @@index([groupId])
+}
+
+enum AuctionStatus {
+  SCHEDULED
+  OPEN
+  COMPLETED
+  CANCELLED
+}
+
+model Bid {
+  id             String      @id @default(cuid())
+  auctionId      String
+  groupMemberId  String
+  bidAmount      Decimal     @db.Decimal(12, 2) 
+  bidTime        DateTime    @default(now())
+  
+  auction        Auction     @relation("AuctionBids", fields: [auctionId], references: [id])
+  wonAuction     Auction?    @relation("AuctionWinner")
+  groupMember    GroupMember @relation(fields: [groupMemberId], references: [id])
+  
+  @@index([auctionId])
+  @@index([groupMemberId])
+}
+
+// -----------------------------------------------------------------------------
+// 3. Installments (Dues) & Payments
+// -----------------------------------------------------------------------------
+
+model Installment {
+  id            String   @id @default(cuid())
+  groupMemberId String
+  monthNumber   Int
+  amountDue     Decimal  @db.Decimal(12, 2)
+  dueDate       DateTime
+  status        InstallmentStatus @default(PENDING)
+  
+  groupMember   GroupMember @relation(fields: [groupMemberId], references: [id])
+  payments      Payment[]
+  
+  @@unique([groupMemberId, monthNumber])
+  @@index([groupMemberId])
+  @@index([monthNumber])
+}
+
+enum InstallmentStatus {
+  PENDING
+  PARTIAL
+  PAID
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  installmentId String
+  amount        Decimal  @db.Decimal(12, 2)
+  paymentDate   DateTime @default(now())
+  method        PaymentMethod
+  reference     String?
+  notes         String?
+  
+  installment   Installment @relation(fields: [installmentId], references: [id])
+  
+  @@index([installmentId])
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  BANK_TRANSFER
+  CHEQUE
+}
+
+// -----------------------------------------------------------------------------
+// 4. Payouts & Expenses
+// -----------------------------------------------------------------------------
+
+model Payout {
+  id            String   @id @default(cuid())
+  auctionId     String   @unique
+  groupMemberId String   
+  amount        Decimal  @db.Decimal(12, 2)
+  payoutDate    DateTime @default(now())
+  method        PaymentMethod
+  reference     String?
+  
+  auction       Auction  @relation(fields: [auctionId], references: [id])
+  groupMember   GroupMember @relation(fields: [groupMemberId], references: [id])
+  
+  @@index([groupMemberId])
+}
+
+model Expense {
+  id            String   @id @default(cuid())
+  groupId       String
+  amount        Decimal  @db.Decimal(12, 2)
+  category      String
+  date          DateTime @default(now())
+  notes         String?
+  
+  group         ChitGroup @relation(fields: [groupId], references: [id])
+  
+  @@index([groupId])
+}
+
+// -----------------------------------------------------------------------------
+// 5. Audit Log
+// -----------------------------------------------------------------------------
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  entity    String
+  entityId  String
+  details   Json?
+  createdAt DateTime @default(now())
+  
+  @@index([entity, entityId])
+}

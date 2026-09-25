@@ -1,0 +1,6 @@
+{
+  "name": "ChitLedger - Chit Fund Manager",
+  "description": "Internal chit fund management tool with automated auction calculation, dividend distribution, organizer fee deduction, member ledgers, and payment reminder workflows.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
